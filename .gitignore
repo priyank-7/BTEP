@@ -35,4 +35,7 @@ build/
 .vscode/
 
 ### Mac OS ###
-.DS_Stor  
+.DS_Stor
+**/.DS_Stor
+
+**/src/main/java/org/drive/DBurl.java
