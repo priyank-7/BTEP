@@ -18,6 +18,7 @@ public enum RequestType {
     ACK_REPLICATION,
     ASK,
     GET_USER_DETAILS,
-    COPY_DATA
+    COPY_DATA,
+    UPDATE
 }
 

@@ -1,2 +1,19 @@
-package org.drive.headers;public class Metrics {
+package org.drive.headers;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+@Builder
+public class Metrics {
+    private double freeSpace;
+    private double usedMemory;
+    private int activeThread;
 }
+

@@ -1,7 +1,6 @@
 package org.drive.db.mappers;
 
 import org.bson.Document;
-
 import org.drive.db.User;
 
 public class UserMapper {

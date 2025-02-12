@@ -2,8 +2,7 @@ package org.drive.db.mappers;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
-
-import org.drive.db.Metadata;
+import org.drive.headers.Metadata;
 
 import java.util.List;
 

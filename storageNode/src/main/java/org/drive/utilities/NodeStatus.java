@@ -1,2 +1,7 @@
-package org.drive.utilities;public enum NodeStatus {
+package org.drive.utilities;
+
+public enum NodeStatus {
+    ACTIVE,
+    INACTIVE,
+    UNRESPONSIVE
 }
