@@ -27,7 +27,7 @@ public class Client {
     private String loadBalancerHost;
     private int loadBalancerPort;
     private String token;
-    private String destinationPath = System.getProperty("user.home") + "/Downloads";
+    private final String destinationPath = System.getProperty("user.home") + "/Downloads";
     private InetSocketAddress nodeAddr;
     Scanner scanner;
 
@@ -182,8 +182,16 @@ public class Client {
             out.flush();
 
             Response response = (Response) in.readObject();
+
+            if(response.getPayload() == null){
+                System.out.println("Server is Down");
+                out.writeObject(new Request(RequestType.DISCONNECT, this.token));
+                return;
+            }
+            else{
+                System.out.println("[client]: Got sotage node ip and port: " + response.getPayload().toString());
+            }
             out.writeObject(new Request(RequestType.DISCONNECT, this.token));
-            System.out.println("[client]: Got sotage node ip and port: " + response.getPayload().toString());
 
             if (response.getStatusCode() == StatusCode.SUCCESS) {
                 this.nodeAddr = (InetSocketAddress) response.getPayload();
@@ -216,12 +224,18 @@ public class Client {
             out.flush();
             Response response = (Response) in.readObject();
             if (response.getStatusCode().equals(StatusCode.SUCCESS)) {
-                logger.info("User registered successfully");
+                out.writeObject(Request.builder()
+                        .requestType(RequestType.DISCONNECT)
+                        .build());
                 return true;
             } else {
-                logger.error("Failed to register user: " + response.getPayload());
+                out.writeObject(Request.builder()
+                        .requestType(RequestType.DISCONNECT)
+                        .build());
+                System.out.println(response.getPayload());
                 return false;
             }
+
         } catch (IOException | ClassNotFoundException e) {
             return false;
         }
@@ -295,7 +309,7 @@ public class Client {
                 return;
             }
             System.out.println("[Client]: Metadata received by storage node");
-            System.out.println("[Client]: Uploading file data");
+            System.out.println("[Client]: Uploading file data...");
 
             // Send the file data in chunks using Response objects
             byte[] buffer = new byte[4096];

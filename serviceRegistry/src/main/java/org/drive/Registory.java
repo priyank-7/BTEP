@@ -214,7 +214,7 @@ public class Registory {
             if (currentTime - lastResponseTime > 900000) { // 15 minutes in milliseconds
                 storageNodes.remove(node.getNodeId());
 
-                // BUG: node is removed from the map before 15 minutes
+                // TODO: node is removed from the map before 15 minutes
                 // TODO: remove messaging queue as well
                 logger.info("Node " + node.getNodeId() + " is removed from the registry.");
             }
@@ -330,81 +330,86 @@ public class Registory {
         private void handleRegisterRequest(PeerRequest request) throws IOException {
             NodeInfo nodeInfo;
             Response response;
-            InetSocketAddress address = request.getSocketAddress();
             if (request.getNodeType() == NodeType.STORAGE_NODE) {
-
-                // TODO:
-                /*
-                 * user this.clientsocket.getSocketAdderdd() insted of getSocketAddress()
-                 */
-
-                nodeInfo = findExistingNode(storageNodes,
-                        new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()));
-                if (nodeInfo != null) {
-                    nodeInfo.setStatus(NodeStatus.ACTIVE);
-                    nodeInfo.setLastResponse(new Date());
-                    logger.info("Storage node re-registered and activated: " + nodeInfo.getNodeId());
-                    response = new Response(StatusCode.SUCCESS,
-                            nodeInfo.getNodeId());
-                } else {
-                    nodeInfo = NodeInfo.builder()
-                            .nodeId(UUID.randomUUID().toString())
-                            .nodetype(request.getNodeType())
-                            .nodeAddress(new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()))
-                            .status(NodeStatus.ACTIVE)
-                            .registrationTime(new Date())
-                            .lastResponse(new Date())
-                            .build();
-                    response = new Response(StatusCode.SUCCESS, "Storage node registered successfully");
-                    logger.debug("Storage Node Address - IP: " + nodeInfo.getNodeAddress().getAddress().toString()
-                            + "PORT: " + nodeInfo.getNodeAddress().getPort());
-                }
+                nodeInfo = handleRegisterStorageNode(request);
                 storageNodes.put(nodeInfo.getNodeId(), nodeInfo);
+                logger.debug("Storage Node - IP: " + nodeInfo.getNodeAddress().getAddress().toString()
+                        + "PORT: " + nodeInfo.getNodeAddress().getPort());
+
+                // TODO: Create New Server for queue
                 // Adding messaging queue for the storage node
                 messagingQueues.computeIfAbsent(nodeInfo.getNodeId(), v -> new LinkedBlockingQueue<>(100));
                 response = new Response(StatusCode.SUCCESS, nodeInfo.getNodeId());
-
-                // logger.debug("Storage node registered successfully: " +
-                // nodeInfo.getNodeAddress().getAddress());
                 sendActiveNodesToLoadBalancers();
 
             } else if (request.getNodeType() == NodeType.LOAD_BALANCER) {
-
-                nodeInfo = findExistingNode(loadBalancers,
-                        new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()));
-                if (nodeInfo != null) {
-                    nodeInfo.setStatus(NodeStatus.ACTIVE);
-                    nodeInfo.setLastResponse(new Date());
-                    logger.info("Load Balancer re-registered and activated: " + nodeInfo.getNodeId());
-                    response = new Response(StatusCode.SUCCESS,
-                            "Load Balancer re-registered and activated successfully");
-                } else {
-                    nodeInfo = NodeInfo.builder()
-                            .nodeId(UUID.randomUUID().toString())
-                            .nodetype(request.getNodeType())
-                            .nodeAddress(new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()))
-                            .status(NodeStatus.ACTIVE)
-                            .registrationTime(new Date())
-                            .lastResponse(new Date())
-                            .build();
-                    response = new Response(StatusCode.SUCCESS, "Load Balancer registered successfully");
-                }
+                nodeInfo = handleRegisterLoadBalancer(request);
+                loadBalancers.put(nodeInfo.getNodeId(), nodeInfo);
                 logger.debug("Load Balancer Address - IP: " + nodeInfo.getNodeAddress().getAddress().toString()
                         + "PORT: " + nodeInfo.getNodeAddress().getPort());
-                loadBalancers.put(nodeInfo.getNodeId(), nodeInfo);
-                List<InetSocketAddress> activeStorageNodes = new ArrayList<>();
-                for (NodeInfo storageNode : storageNodes.values()) {
-                    if (storageNode.getStatus() == NodeStatus.ACTIVE) {
-                        activeStorageNodes.add(storageNode.getNodeAddress());
-                    }
-                }
-                response = new Response(StatusCode.SUCCESS, activeStorageNodes);
+                response = new Response(StatusCode.SUCCESS, getActiveStorageNodes());
+
             } else {
                 response = new Response(StatusCode.INTERNAL_SERVER_ERROR, "Unknown request type");
             }
             out.writeObject(response);
             out.flush();
-            return;
+        }
+
+        private NodeInfo handleRegisterStorageNode(PeerRequest request){
+            InetSocketAddress address = request.getSocketAddress();
+            NodeInfo nodeInfo;
+            nodeInfo = findExistingNode(storageNodes,
+                    new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()));
+            if (nodeInfo != null) {
+                nodeInfo.setStatus(NodeStatus.ACTIVE);
+                nodeInfo.setLastResponse(new Date());
+                logger.info("Storage Node Re-Registered and Activated: " + nodeInfo.getNodeId());
+            } else {
+                nodeInfo = NodeInfo.builder()
+                        .nodeId(UUID.randomUUID().toString())
+                        .nodetype(request.getNodeType())
+                        .nodeAddress(new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()))
+                        .status(NodeStatus.ACTIVE)
+                        .registrationTime(new Date())
+                        .lastResponse(new Date())
+                        .build();
+                logger.debug("Storage Node Address - IP: " + nodeInfo.getNodeAddress().getAddress().toString()
+                        + "PORT: " + nodeInfo.getNodeAddress().getPort());
+            }
+            return nodeInfo;
+        }
+
+        private NodeInfo handleRegisterLoadBalancer(PeerRequest request){
+            InetSocketAddress address = request.getSocketAddress();
+            NodeInfo nodeInfo;
+            nodeInfo = findExistingNode(loadBalancers,
+                    new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()));
+            if (nodeInfo != null) {
+                nodeInfo.setStatus(NodeStatus.ACTIVE);
+                nodeInfo.setLastResponse(new Date());
+                logger.info("Load Balancer Re-Registered and Activated: " + nodeInfo.getNodeId());
+            } else {
+                nodeInfo = NodeInfo.builder()
+                        .nodeId(UUID.randomUUID().toString())
+                        .nodetype(request.getNodeType())
+                        .nodeAddress(new InetSocketAddress(this.clientSocket.getInetAddress(), address.getPort()))
+                        .status(NodeStatus.ACTIVE)
+                        .registrationTime(new Date())
+                        .lastResponse(new Date())
+                        .build();
+            }
+            return nodeInfo;
+        }
+
+        private List<InetSocketAddress> getActiveStorageNodes(){
+            List<InetSocketAddress> activeStorageNodes = new ArrayList<>();
+            for (NodeInfo storageNode : storageNodes.values()) {
+                if (storageNode.getStatus() == NodeStatus.ACTIVE) {
+                    activeStorageNodes.add(storageNode.getNodeAddress());
+                }
+            }
+            return activeStorageNodes;
         }
 
         private NodeInfo findExistingNode(Map<String, NodeInfo> registeredNodes, InetSocketAddress currentAddress) {

@@ -7,36 +7,32 @@ public class App {
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
     public static void main(String[] args) {
-//        if (args.length < 3) {
-//            logger.error("Usage: java -jar storageNode.jar <PORT> <SERVICE_REGISTRY_IP> <SERVICE_REGISTRY_PORT>");
-//            System.exit(1);
-//        }
-//
-//        int port;
-//        try {
-//            port = Integer.parseInt(args[0]);
-//        } catch (NumberFormatException e) {
-//            logger.error("Invalid port number: {}", args[0]);
-//            return;
-//        }
-//
-//        String serviceRegistryIP = args[1];
-//        int serviceRegistryPort;
-//        try {
-//            serviceRegistryPort = Integer.parseInt(args[2]);
-//        } catch (NumberFormatException e) {
-//            logger.error("Invalid service registry port: {}", args[2]);
-//            return;
-//        }
-//
-//        logger.info("Storage Node starting on port: {}", port);
-//        logger.info("Connecting to Service Registry at {}:{}", serviceRegistryIP, serviceRegistryPort);
+        if (args.length < 3) {
+            logger.error("Usage: java -jar storageNode.jar <PORT> <SERVICE_REGISTRY_IP> <SERVICE_REGISTRY_PORT>");
+            System.exit(1);
+        }
 
-        String registryIP = "localhost";
-        int registryPort = 7070;
-        int storagePort = 9091;
+        int port;
+        try {
+            port = Integer.parseInt(args[0]);
+        } catch (NumberFormatException e) {
+            logger.error("Invalid port number: {}", args[0]);
+            return;
+        }
 
-        StorageNode storageNode = new StorageNode(storagePort, registryIP, registryPort);
+        String serviceRegistryIP = args[1];
+        int serviceRegistryPort;
+        try {
+            serviceRegistryPort = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            logger.error("Invalid service registry port: {}", args[2]);
+            return;
+        }
+
+        logger.info("Storage Node starting on port: {}", port);
+        logger.info("Connecting to Service Registry at {}:{}", serviceRegistryIP, serviceRegistryPort);
+
+        StorageNode storageNode = new StorageNode(port, serviceRegistryIP, serviceRegistryPort);
         storageNode.start();
     }
 }

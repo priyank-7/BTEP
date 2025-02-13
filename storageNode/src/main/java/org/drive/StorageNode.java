@@ -583,9 +583,11 @@ public class StorageNode {
         private void handleUploadFile(Request request) throws IOException {
             logger.info("uploade file request received");
             Metadata metadata = (Metadata) request.getPayload();
-            logger.info("metada recieved");
+            logger.info("metadata received");
             String directoryPath = STORAGE_DIRECTORY + "/" + this.currentUser.getUsername();
             String filePath = directoryPath + "/" + metadata.getName();
+
+
             Metadata tempMetadata = this.metadataDao.getMetadata(metadata.getName(), this.currentUser.get_id());
             if (tempMetadata == null) {
                 tempMetadata = Metadata.builder()
@@ -605,14 +607,21 @@ public class StorageNode {
                     logger.error("Error to save metadata");
                     out.writeObject(new Response(StatusCode.INTERNAL_SERVER_ERROR, "Error to save metadata"));
                     out.flush();
+                    return;
                 }
             } else {
                 tempMetadata.setModifiedDate(new Date());
                 tempMetadata.setSize(metadata.getSize());
-                this.metadataDao.updateMetadata(tempMetadata.getName(), this.currentUser.get_id(), tempMetadata);
-                logger.info("File details ");
+                if(!this.metadataDao.updateMetadata(tempMetadata.getName(), this.currentUser.get_id(), tempMetadata)){
+                    out.writeObject(new Response(StatusCode.INTERNAL_SERVER_ERROR, "Error to save metadata"));
+                    out.flush();
+                    return;
+                }
                 out.writeObject(new Response(StatusCode.SUCCESS, "File already exists"));
             }
+
+
+
             logger.info("Ready to receive file");
             File file = new File(filePath);
             File directory = new File(directoryPath);

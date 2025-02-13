@@ -1,5 +1,6 @@
 package org.drive.db;
 
+import com.mongodb.client.result.InsertOneResult;
 import org.drive.headers.Metadata;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
@@ -24,8 +25,8 @@ public class MetadataDao {
                 .append("modifiedDate", metadata.getModifiedDate())
                 .append("owner", metadata.getOwner())
                 .append("sharedWith", metadata.getSharedWith());
-        collection.insertOne(doc);
-        return true;
+        InsertOneResult status = collection.insertOne(doc);
+        return status.wasAcknowledged();
     }
 
     public boolean updateMetadata(String fileName, ObjectId ownerId, Metadata newMetadata) {
@@ -39,16 +40,8 @@ public class MetadataDao {
                 .append("modifiedDate", newMetadata.getModifiedDate())
                 .append("owner", newMetadata.getOwner())
                 .append("sharedWith", newMetadata.getSharedWith()));
-
-        // Perform the update
         UpdateResult result = collection.updateOne(filter, update);
-
-        // Print or return the result
-        if (result.getMatchedCount() > 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return result.wasAcknowledged();
     }
 
     public boolean deleteMetadata(String fileName, ObjectId ownerId) {
@@ -75,7 +68,6 @@ public class MetadataDao {
                     .sharedWith(doc.getList("sharedWith", ObjectId.class))
                     .build();
         } else {
-            System.out.println("Metadata not found for file: " + fileName);
             return null;
         }
     }
@@ -84,11 +76,6 @@ public class MetadataDao {
         Document doc = collection.findOneAndDelete(Filters.and(
                 Filters.eq("name", tempMetaData.getName()),
                 Filters.eq("owner", tempMetaData.getOwner())));
-
-        if (doc != null) {
-            return true;
-        } else {
-            return false;
-        }
+        return doc != null;
     }
 }

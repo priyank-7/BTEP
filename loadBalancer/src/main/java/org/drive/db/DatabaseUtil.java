@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class DatabaseUtil {
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/cloude_schema";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/lb_user_db";
     private static final String USER = "root";
     private static final String PASS = "12345678";
 

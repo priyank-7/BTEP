@@ -4,16 +4,17 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.drive.db.DatabaseUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.drive.Token.TokenManager;
-import org.drive.db.MongoDBConnection;
 import org.drive.db.User;
 import org.drive.db.UserDAO;
 import org.drive.headers.Request;
@@ -56,12 +57,16 @@ public class LoadBalancer {
             int poolSize = Runtime.getRuntime().availableProcessors();
             this.threadPool = Executors.newFixedThreadPool(poolSize * 4);
             logger.info("Thread pool initialized with size: " + poolSize * 4);
-            userDAO = new UserDAO(MongoDBConnection.getDatabase("ddrive"));
+            userDAO = new UserDAO(DatabaseUtil.getConnection());
             tokenManager = new TokenManager();
             // Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
             registerWithRegistory();
         } catch (IOException e) {
+            logger.error(e.getMessage());
             throw new RuntimeException("Failed to initialize LoadBalancer", e);
+        } catch (SQLException e) {
+            logger.error(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -197,12 +202,19 @@ public class LoadBalancer {
                             .payload("User with same username already exists")
                             .build();
                 } else {
-                    this.userDAO.insertUser(user);
-                    response = Response.builder()
-                            .statusCode(StatusCode.SUCCESS)
-                            .payload("User signed up successfully")
-                            .build();
-                    logger.info("User signed up successfully: " + user);
+                    if(this.userDAO.insertUser(user)){
+                        response = Response.builder()
+                                .statusCode(StatusCode.SUCCESS)
+                                .payload("User signed up successfully")
+                                .build();
+                        logger.info("User signed up successfully: " + user);
+                    }
+                    else{
+                        response = Response.builder()
+                                .statusCode(StatusCode.INTERNAL_SERVER_ERROR)
+                                .build();
+                        logger.error("Error during creating user: " + user);
+                    }
                 }
 
                 out.writeObject(response);
@@ -210,7 +222,6 @@ public class LoadBalancer {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return;
         }
 
         private void handleAuthenticate(Request request) throws IOException {
@@ -220,7 +231,7 @@ public class LoadBalancer {
             User user;
             try {
                 user = userDAO.getUserByUsername(username);
-                System.out.println("User: " + user);
+                logger.info("User Found");
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
