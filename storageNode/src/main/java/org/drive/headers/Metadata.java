@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
-import org.bson.types.ObjectId;
+//import org.bson.types.ObjectId;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,12 +20,13 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Metadata implements Serializable {
-    private String name;
-    private long size;
+    private String metadataId; // Primary Key
+    private String name;  // notnull
+    private long size;  // notnull
     private String path;
     private boolean isFolder;
-    private Date createdDate;
-    private Date modifiedDate;
-    private ObjectId owner;
-    private List<ObjectId> sharedWith;
+    private Date createdDate;  // notnull
+    private Date modifiedDate; // notnull
+    private String owner; // notnull
+    private List<String> sharedWith;
 }

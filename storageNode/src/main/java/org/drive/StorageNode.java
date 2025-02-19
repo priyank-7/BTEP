@@ -70,7 +70,7 @@ public class StorageNode {
         try {
             serverSocket = new ServerSocket(port);
             int poolSize = Runtime.getRuntime().availableProcessors();
-            metadataDao = new MetadataDao("ddrive", "metadata");
+            metadataDao = new MetadataDao();
             logger.info("Thread pool size: " + poolSize);
             if (!registerWithRegistry()) {
                 logger.error("Failed to register with the Registry");
@@ -176,6 +176,7 @@ public class StorageNode {
 
                 String filePath = STORAGE_DIRECTORY + "/" + currentRequest.getFilePath();
                 String[] pathParts = currentRequest.getFilePath().split("/");
+                logger.debug("Getting User Details from LB " + pathParts[0]);
                 User user = getUserDetailsFromLB(pathParts[0]);
 
                 if (currentRequest.getRequestType().equals(RequestType.DELETE_DATA)) {
@@ -245,6 +246,7 @@ public class StorageNode {
                                             new Response(StatusCode.INTERNAL_SERVER_ERROR, "Error to save metadata"));
                                     out.flush();
                                     out.writeObject(new Request(RequestType.DISCONNECT));
+                                    out.flush();
                                     // TODO: put current replication request into queue again
                                     continue;
                                 }
@@ -252,7 +254,8 @@ public class StorageNode {
                                 this.metadataDao.updateMetadata(tempMetadata.getName(), user.get_id(),
                                         metadata);
                                 logger.info("File details ");
-                                out.writeObject(new Response(StatusCode.SUCCESS, "File already exists"));
+                                out.writeObject(new Response(StatusCode.SUCCESS, "Existing File Will be Overwritten"));
+                                out.flush();
                             }
 
                             response = (Response) in.readObject();
@@ -300,6 +303,7 @@ public class StorageNode {
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             logger.error("Error in makeRelicationRequest: " + e.getMessage());
         }
     }
@@ -307,7 +311,7 @@ public class StorageNode {
     private User getUserDetailsFromLB(String userName) {
         InetSocketAddress lbInetSocketAddress = getLoadBalancerAddress();
         if (lbInetSocketAddress == null) {
-            logger.error("LB address receved NULL, returning false");
+            logger.error("LB address recieved NULL, returning false");
             return null;
         }
         try (Socket loadBalancerSocket = new Socket(lbInetSocketAddress.getAddress(),
@@ -328,6 +332,7 @@ public class StorageNode {
             if (response.getStatusCode() == StatusCode.SUCCESS) {
                 return (User) response.getPayload();
             } else {
+                logger.info("Response from LB in Method: (getUserDetailsFromLB) " + response.getStatusCode().toString());
                 return null;
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -567,7 +572,6 @@ public class StorageNode {
                 loadBalancerOut.writeObject(new Request(RequestType.DISCONNECT));
                 if (response.getStatusCode() == StatusCode.SUCCESS) {
                     this.currentUser = (User) response.getPayload();
-
                     return true;
                 } else {
                     return false;
@@ -591,6 +595,7 @@ public class StorageNode {
             Metadata tempMetadata = this.metadataDao.getMetadata(metadata.getName(), this.currentUser.get_id());
             if (tempMetadata == null) {
                 tempMetadata = Metadata.builder()
+                        .metadataId(UUID.randomUUID().toString())
                         .name(metadata.getName())
                         .size(metadata.getSize())
                         .isFolder(false)

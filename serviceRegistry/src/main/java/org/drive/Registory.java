@@ -13,6 +13,7 @@ import org.drive.utilities.ReplicateRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,11 +21,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.Date;
-import java.util.UUID;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -285,6 +282,7 @@ public class Registory {
                             break;
                         case FORWARD_REQUEST:
                             handleForwardRequest(request);
+                            break;
                         case DISCONNECT:
                             clientSocket.close();
                             return;
@@ -309,22 +307,28 @@ public class Registory {
                             .build());
                     out.flush();
                 } else {
-
-                    for (NodeInfo lb : loadBalancers.values()) {
-                        logger.info("Forwarding request to load balancer: " + lb.getNodeId());
-                        out.writeObject(Response.builder()
-                                .statusCode(StatusCode.SUCCESS)
-                                .payload(lb.getNodeAddress())
-                                .build());
-                        out.flush();
-                        logger.info("successfully send lb address to storage node");
-                        break;
+                    Collection<NodeInfo> lbs = loadBalancers.values();
+                    for (NodeInfo lb : lbs) {
+                        if(lb.getStatus().equals(NodeStatus.ACTIVE)) {
+                            logger.info("Forwarding request to load balancer: " + lb.getNodeId());
+                            out.writeObject(Response.builder()
+                                    .statusCode(StatusCode.SUCCESS)
+                                    .payload(lb.getNodeAddress())
+                                    .build());
+                            out.flush();
+                            logger.info("successfully send lb address to storage node");
+                            return;
+                        }
                     }
+                    out.writeObject(Response.builder()
+                            .statusCode(StatusCode.NOT_FOUND)
+                            .build());
+                    out.flush();
+                    logger.info("No Active Load Balancer found");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            return;
         }
 
         private void handleRegisterRequest(PeerRequest request) throws IOException {

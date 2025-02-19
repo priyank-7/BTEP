@@ -132,6 +132,7 @@ public class LoadBalancer {
                 out = new ObjectOutputStream(clientSocket.getOutputStream());
                 in = new ObjectInputStream(clientSocket.getInputStream());
             } catch (IOException e) {
+                logger.error("Exception During Creation Of Out/In stream in ClientHandler");
                 e.printStackTrace();
             }
         }
@@ -144,18 +145,14 @@ public class LoadBalancer {
 
                     switch (request.getRequestType()) {
                         case GET_USER_DETAILS:
-                            String username = (String) request.getPayload();
-                            User user = userDAO.getUserByUsername(username);
-                            out.writeObject(Response.builder()
-                                    .statusCode(StatusCode.SUCCESS)
-                                    .payload(user)
-                                    .build());
+                            handleGetUserDetails(request);
                             break;
                         case PING:
                             handlePingRequest();
                             clientSocket.close();
                             return;
                         case UPDATE:
+                            // TODO: This operation should handle concurrent access
                             storageNodes = (List<InetSocketAddress>) request.getPayload();
                             logger.info("Updated storage nodes: " + storageNodes);
                             clientSocket.close();
@@ -182,6 +179,31 @@ public class LoadBalancer {
                     }
                 }
             } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void handleGetUserDetails(Request request){
+            try{
+                String username = (String)request.getPayload();
+                if (username == null || username.isEmpty()){
+                    out.writeObject(Response.builder().statusCode(StatusCode.NOT_FOUND).build());
+                    out.flush();
+                    return;
+                }
+                User user = userDAO.getUserByUsername(username);
+                if(user == null){
+                    out.writeObject(Response.builder().statusCode(StatusCode.NOT_FOUND).build());
+                    out.flush();
+                    return;
+                }
+                out.writeObject(Response.builder()
+                        .statusCode(StatusCode.SUCCESS)
+                        .payload(user)
+                        .build());
+                out.flush();
+
+            }catch (IOException e){
                 e.printStackTrace();
             }
         }

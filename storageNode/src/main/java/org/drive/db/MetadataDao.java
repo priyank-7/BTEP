@@ -1,81 +1,113 @@
 package org.drive.db;
 
-import com.mongodb.client.result.InsertOneResult;
 import org.drive.headers.Metadata;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.result.UpdateResult;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-import org.bson.Document;
-import org.bson.types.ObjectId;
+import java.sql.*;
+import java.util.*;
 
 public class MetadataDao {
-    private final MongoCollection<Document> collection;
 
-    public MetadataDao(String dbName, String collectionName) {
-        this.collection = MongoDBConnection.getCollection(dbName, collectionName);
-    }
+    private static final String URL = "jdbc:mysql://localhost:3306/your_database";
+    private static final String USER = "your_username";
+    private static final String PASSWORD = "your_password";
 
+    // Save metadata
     public boolean saveMetadata(Metadata metadata) {
-        Document doc = new Document("name", metadata.getName())
-                .append("size", metadata.getSize())
-                .append("path", metadata.getPath())
-                .append("isFolder", metadata.isFolder())
-                .append("createdDate", metadata.getCreatedDate())
-                .append("modifiedDate", metadata.getModifiedDate())
-                .append("owner", metadata.getOwner())
-                .append("sharedWith", metadata.getSharedWith());
-        InsertOneResult status = collection.insertOne(doc);
-        return status.wasAcknowledged();
-    }
+        String sql = "INSERT INTO Metadata (metadata_id, name, size, path, is_folder, created_date, modified_date, owner) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-    public boolean updateMetadata(String fileName, ObjectId ownerId, Metadata newMetadata) {
-        Document filter = new Document("name", fileName).append("owner", ownerId);
+            stmt.setString(1, metadata.getMetadataId());
+            stmt.setString(2, metadata.getName());
+            stmt.setLong(3, metadata.getSize());
+            stmt.setString(4, metadata.getPath());
+            stmt.setBoolean(5, metadata.isFolder());
+            stmt.setTimestamp(6, new Timestamp(metadata.getCreatedDate().getTime()));
+            stmt.setTimestamp(7, new Timestamp(metadata.getModifiedDate().getTime()));
+            stmt.setString(8, metadata.getOwner());
 
-        Document update = new Document("$set", new Document("name", newMetadata.getName())
-                .append("size", newMetadata.getSize())
-                .append("path", newMetadata.getPath())
-                .append("isFolder", newMetadata.isFolder())
-                .append("createdDate", newMetadata.getCreatedDate())
-                .append("modifiedDate", newMetadata.getModifiedDate())
-                .append("owner", newMetadata.getOwner())
-                .append("sharedWith", newMetadata.getSharedWith()));
-        UpdateResult result = collection.updateOne(filter, update);
-        return result.wasAcknowledged();
-    }
-
-    public boolean deleteMetadata(String fileName, ObjectId ownerId) {
-        collection.deleteOne(Filters.and(
-                Filters.eq("name", fileName),
-                Filters.eq("owner", ownerId)));
-        return true;
-    }
-
-    public Metadata getMetadata(String fileName, ObjectId ownerId) {
-        Document doc = collection.find(Filters.and(
-                Filters.eq("name", fileName),
-                Filters.eq("owner", ownerId))).first();
-
-        if (doc != null) {
-            return Metadata.builder()
-                    .name(doc.getString("name"))
-                    .size(doc.getLong("size"))
-                    .path(doc.getString("path"))
-                    .isFolder(doc.getBoolean("isFolder"))
-                    .createdDate(doc.getDate("createdDate"))
-                    .modifiedDate(doc.getDate("modifiedDate"))
-                    .owner(doc.getObjectId("owner"))
-                    .sharedWith(doc.getList("sharedWith", ObjectId.class))
-                    .build();
-        } else {
-            return null;
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
-    public boolean deleteMetadata(Metadata tempMetaData) {
-        Document doc = collection.findOneAndDelete(Filters.and(
-                Filters.eq("name", tempMetaData.getName()),
-                Filters.eq("owner", tempMetaData.getOwner())));
-        return doc != null;
+    // Update metadata
+    public boolean updateMetadata(String fileName, String ownerId, Metadata newMetadata) {
+        String sql = "UPDATE Metadata SET name = ?, size = ?, path = ?, is_folder = ?, created_date = ?, modified_date = ? WHERE name = ? AND owner = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, newMetadata.getName());
+            stmt.setLong(2, newMetadata.getSize());
+            stmt.setString(3, newMetadata.getPath());
+            stmt.setBoolean(4, newMetadata.isFolder());
+            stmt.setTimestamp(5, new Timestamp(newMetadata.getCreatedDate().getTime()));
+            stmt.setTimestamp(6, new Timestamp(newMetadata.getModifiedDate().getTime()));
+            stmt.setString(7, fileName);
+            stmt.setString(8, ownerId);
+
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Delete metadata by name and ownerId
+    public boolean deleteMetadata(String fileName, String ownerId) {
+        String sql = "DELETE FROM Metadata WHERE name = ? AND owner = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, fileName);
+            stmt.setString(2, ownerId);
+
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Get metadata by file name and ownerId
+    public Metadata getMetadata(String fileName, String ownerId) {
+        String sql = "SELECT * FROM Metadata WHERE name = ? AND owner = ?";
+        try (Connection conn = DatabaseUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, fileName);
+            stmt.setString(2, ownerId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Metadata metadata = new Metadata();
+                    metadata.setMetadataId(rs.getString("metadata_id"));
+                    metadata.setName(rs.getString("name"));
+                    metadata.setSize(rs.getLong("size"));
+                    metadata.setPath(rs.getString("path"));
+                    metadata.setFolder(rs.getBoolean("is_folder"));
+                    metadata.setCreatedDate(rs.getTimestamp("created_date"));
+                    metadata.setModifiedDate(rs.getTimestamp("modified_date"));
+                    metadata.setOwner(rs.getString("owner"));
+                    return metadata;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    // Delete metadata by Metadata object
+    public boolean deleteMetadata(Metadata tempMetadata) {
+        return deleteMetadata(tempMetadata.getName(), tempMetadata.getOwner());
     }
 }
