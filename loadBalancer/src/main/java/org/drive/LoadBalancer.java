@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.drive.db.DatabaseUtil;
+import org.drive.utilities.LoadMatrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,7 @@ public class LoadBalancer {
         try {
             serverSocket = new ServerSocket(port);
             int poolSize = Runtime.getRuntime().availableProcessors();
-            this.threadPool = Executors.newFixedThreadPool(poolSize * 4);
+            this.threadPool = Executors.newCachedThreadPool();
             logger.info("Thread pool initialized with size: " + poolSize * 4);
             userDAO = new UserDAO(DatabaseUtil.getConnection());
             tokenManager = new TokenManager();
@@ -253,7 +254,6 @@ public class LoadBalancer {
             User user;
             try {
                 user = userDAO.getUserByUsername(username);
-                logger.info("User Found");
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
@@ -328,9 +328,14 @@ public class LoadBalancer {
             try {
                 // Send a simple PONG response back to the client
                 // logger.info("Received PING request from registry");
-                out.writeObject(new Response(StatusCode.PONG, "PONG"));
+                LoadMatrix loadMatrix = AppLoadMatrix.getLoadMatrix();
+                out.writeObject(Response.builder()
+                        .statusCode(StatusCode.PONG)
+                        .payload(loadMatrix)
+                        .build());
                 out.flush();
             } catch (IOException e) {
+                logger.error("Exception occurred while sending response of PING request");
                 e.printStackTrace();
             }
         }

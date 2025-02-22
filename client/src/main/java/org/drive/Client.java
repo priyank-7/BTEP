@@ -28,7 +28,7 @@ public class Client {
     private int loadBalancerPort;
     private String token;
     private final String destinationPath = System.getProperty("user.home") + "/Downloads";
-    private InetSocketAddress nodeAddr;
+    public InetSocketAddress nodeAddr;
     Scanner scanner;
 
     // TODO: Impliment connection timeout
@@ -168,7 +168,7 @@ public class Client {
         }
     }
 
-    private void forwardRequest() {
+    public void forwardRequest() {
         try (Socket socket = new Socket(loadBalancerHost, loadBalancerPort);
              ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
@@ -241,7 +241,7 @@ public class Client {
         }
     }
 
-    private boolean authenticate(String username, String password) {
+    public boolean authenticate(String username, String password) {
         try (Socket socket = new Socket(loadBalancerHost, loadBalancerPort);
              ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
@@ -272,7 +272,7 @@ public class Client {
         }
     }
 
-    private void uploadFileToStorageNode(String filePath, InetSocketAddress storageNodeAddress) {
+    public void uploadFileToStorageNode(String filePath, InetSocketAddress storageNodeAddress) {
         try (Socket storageSocket = new Socket(storageNodeAddress.getAddress(), storageNodeAddress.getPort());
              ObjectOutputStream out = new ObjectOutputStream(storageSocket.getOutputStream());
              ObjectInputStream in = new ObjectInputStream(storageSocket.getInputStream());

@@ -21,6 +21,7 @@ import org.drive.headers.Request;
 import org.drive.headers.RequestType;
 import org.drive.headers.Response;
 import org.drive.headers.StatusCode;
+import org.drive.utilities.LoadMatrix;
 import org.drive.utilities.NodeType;
 import org.drive.utilities.PeerRequest;
 import org.drive.utilities.ReplicateRequest;
@@ -500,37 +501,12 @@ public class StorageNode {
 
         private void handlePingRequest() throws IOException {
             try {
-
+                LoadMatrix loadMatrix = AppLoadMatrix.getLoadMatrix();
                 out.writeObject(Response.builder()
                         .statusCode(StatusCode.PONG)
+                        .payload(loadMatrix)
                         .build());
-
-                /*
-                 * // fatch Storage details
-                 * File storage = new File(STORAGE_DIRECTORY);
-                 * double freeSpace = (double) (storage.getUsableSpace() /
-                 * storage.getTotalSpace()) * 100;
-                 *
-                 * // fatch Memory details
-                 * MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
-                 * double usedMem = (double) (memoryMXBean.getHeapMemoryUsage().getUsed()
-                 * / memoryMXBean.getHeapMemoryUsage().getMax()) * 100;
-                 * // fatch Threads details
-                 * ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-                 * int threadCount = threadMXBean.getThreadCount();
-                 *
-                 * // Send a simple PONG response back to the client
-                 * out.writeObject(Response.builder()
-                 * .statusCode(StatusCode.PONG)
-                 * .payload(Metrics.builder()
-                 * .freeSpace(freeSpace)
-                 * .usedMemory(usedMem)
-                 * .activeThread(threadCount)
-                 * .build())
-                 * .build());
-                 * out.flush();
-                 *
-                 */
+                out.flush();
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -5,11 +5,7 @@ import org.drive.headers.Request;
 import org.drive.headers.RequestType;
 import org.drive.headers.Response;
 import org.drive.headers.StatusCode;
-import org.drive.utilities.NodeInfo;
-import org.drive.utilities.NodeStatus;
-import org.drive.utilities.NodeType;
-import org.drive.utilities.PeerRequest;
-import org.drive.utilities.ReplicateRequest;
+import org.drive.utilities.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,7 +179,8 @@ public class Registory {
                 node.setStatus(NodeStatus.ACTIVE);
                 node.setLastResponse(new Date());
                 node.setFailedAttempts(0);
-
+                LoadMatrix loadMatrix = (LoadMatrix) response.getPayload();
+                logger.info(loadMatrix.toString());
                 // TODO: add metrics details to a list
                 // storageNodeMetrics.computeIfAbsent(node.getNodeId(), v -> null);
                 // storageNodeMetrics.put(node.getNodeId(), (Metrics) response.getPayload());

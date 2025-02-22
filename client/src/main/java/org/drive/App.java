@@ -21,6 +21,14 @@ public class App {
         Client client = new Client(loadBalancerIP, port);
         client.HandelRequest();
 
+//        client.authenticate("Lando", "mclrn");
+//        client.forwardRequest();
+//
+//        for(int i = 0 ; i < 10; i++){
+//            client.uploadFileToStorageNode("/Users/priyankpatel/Desktop/test2.png", client.nodeAddr);
+//        }
+
+
 //        String LoadBalancer_Ip = "localhost"; // args[0];
 //        int LoadBalancer_Port = 8080; // Integer.parseInt(args[1]);
 //        Client client = new Client(LoadBalancer_Ip, LoadBalancer_Port);
