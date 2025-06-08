@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class DatabaseUtil {
 
@@ -11,6 +13,7 @@ public class DatabaseUtil {
     private static final String DB_NAME = "lb_user_db";
     private static final String USER = "root";
     private static final String PASS = "12345678";
+    private static final int POOLSIZE = 10;
 
     public static Connection getConnection() throws SQLException {
         createDatabaseAndTableIfNotExists();

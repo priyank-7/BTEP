@@ -18,13 +18,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 // TODO: data security while transferring data between nodes and while stored
 
@@ -36,16 +30,7 @@ public class Registory {
     /*
      * Retry mechanism logic?
      * Node failure handling?
-     * Impliment logic to detect already existing nodes, which are spin up before
-     * the registory server.
      */
-
-    // BUG: when storage node request for LB address,
-    // sometimes storage node get null / error
-
-    // LoggerContext context = (LoggerContext) LogManager.getLogger();
-    // private org.apache.logging.log4j.core.Logger logger =
-    // context.getLogger(Registory.class.getName());
 
     private static final int HEARTBEAT_INTERVAL = 5000; // 5 seconds
     private static final int HEARTBEAT_TIMEOUT = 2000; // 2 seconds
@@ -53,13 +38,11 @@ public class Registory {
 
     private ServerSocket serverSocket;
     private ExecutorService threadPool;
-
     private static final ConcurrentHashMap<String, NodeInfo> storageNodes = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, NodeInfo> loadBalancers = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, BlockingQueue<ReplicateRequest>> messagingQueues = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Integer> replicationAckStatus = new ConcurrentHashMap<>();
     private static final BlockingQueue<ReplicateRequest> ackList = new LinkedBlockingQueue<>();
-    private static final ConcurrentHashMap<String, Metrics> storageNodeMetrics = new ConcurrentHashMap<>();
 
     public Registory(int port) {
         try {
@@ -180,10 +163,12 @@ public class Registory {
                 node.setLastResponse(new Date());
                 node.setFailedAttempts(0);
                 LoadMatrix loadMatrix = (LoadMatrix) response.getPayload();
-                logger.info(loadMatrix.toString());
-                // TODO: add metrics details to a list
-                // storageNodeMetrics.computeIfAbsent(node.getNodeId(), v -> null);
-                // storageNodeMetrics.put(node.getNodeId(), (Metrics) response.getPayload());
+//                logger.info(loadMatrix.toString());
+                double load = calculateLoadMatrix(loadMatrix);
+                logger.info("Load On Server "+node.getNodeId()+" is "+load);
+                // TODO: Store matrix  details on DB
+                // TODO: Rearrange SN list accordingly their load
+                // TODO: Send it to LoadBalancer
             } else {
                 handleNodeFailure(node);
             }
@@ -191,6 +176,13 @@ public class Registory {
         } catch (IOException | ClassNotFoundException e) {
             handleNodeFailure(node);
         }
+    }
+
+    private double calculateLoadMatrix(LoadMatrix matrix){
+        return (matrix.getThreadCount() * 0.4) +
+                ((matrix.getHeapMemory() / ((1024 * 1024) * 1.0)) * 0.2) +
+                (matrix.getCpuLoad() * 0.1) +
+                ((matrix.getIOBytes() / ((1024 * 1024) * 1.0)) * 0.3);
     }
 
     private void handleNodeFailure(NodeInfo node) {

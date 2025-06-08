@@ -17,4 +17,5 @@ public class LoadMatrix implements Serializable {
     private long usedSpace;
     private long totalSpace;
     private long freeSpace;
+    private long IOBytes;
 }

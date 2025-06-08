@@ -1,9 +1,12 @@
 package org.drive;
 
 import org.drive.utilities.LoadMatrix;
+import oshi.SystemInfo;
+import oshi.hardware.NetworkIF;
 
 import java.lang.management.*;
 import java.io.File;
+import java.util.List;
 
 public class AppLoadMatrix {
     public static LoadMatrix getLoadMatrix() {
@@ -18,6 +21,7 @@ public class AppLoadMatrix {
 
         // CPU Load
         double cpuLoad = ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
+        long IOBytes = getNetworkBytes();
 
         // Disk Usage
         File disk = new File("/");
@@ -30,45 +34,21 @@ public class AppLoadMatrix {
                 .threadCount(threadCount)
                 .heapMemory(heapMemory)
                 .cpuLoad(cpuLoad)
+                .IOBytes(IOBytes)
                 .totalSpace(totalSpace)
                 .usedSpace(usedSpace)
                 .freeSpace(freeSpace)
                 .build();
-
-        // Network I/O
-//        long networkBytes = 0;
-
-        // Calculate load matrix
-
-
-//        double loadMatrix = (threadCount * 0.4) +
-//                ((heapMemory / (1024 * 1024)) * 0.2) +
-//                ((usedSpace / (1024 * 1024 * 1024)) * 0.2) +
-//                (cpuLoad * 0.1) +
-//                ((networkBytes / (1024 * 1024)) * 0.1);
-
-        // Print metrics
-//        System.out.println("🧵 Threads: " + threadCount);
-//        System.out.println("🖥️ Heap Memory (MB): " + heapMemory / (1024 * 1024));
-//        System.out.println("💾 Disk Usage (GB): " + usedSpace / (1024 * 1024 * 1024));
-//        System.out.println("⚙️ CPU Load: " + String.format("%.2f", cpuLoad));
-//        System.out.println("📡 Network I/O (MB): " + networkBytes / (1024 * 1024));
-//        System.out.println("📊 Load Matrix: " + String.format("%.2f", loadMatrix));
-//        System.out.println("---------------------------------------------------");
     }
-//    private static long getNetworkBytes() {
-//        long totalBytes = 0;
-//        try {
-//            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-//            while (interfaces.hasMoreElements()) {
-//                NetworkInterface networkInterface = interfaces.nextElement();
-//                if (networkInterface.isUp() && !networkInterface.isLoopback()) {
-//                    totalBytes += networkInterface.getRxBytes() + networkInterface.getTxBytes();
-//                }
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return totalBytes;
-//    }
+    private static long getNetworkBytes() {
+        SystemInfo systemInfo = new SystemInfo();
+        List<NetworkIF> networkIFs = systemInfo.getHardware().getNetworkIFs();
+        long totalBytes = 0;
+
+        for (NetworkIF net : networkIFs) {
+            totalBytes += net.getBytesRecv() + net.getBytesSent();
+        }
+        return totalBytes;
+    }
+
 }
